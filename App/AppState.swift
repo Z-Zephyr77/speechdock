@@ -437,6 +437,7 @@ final class AppState {
     var subtitleFontSize: Double = 28.0 {
         didSet {
             guard !isLoadingPreferences else { return }
+            SubtitleOverlayManager.shared.updateSize()
             savePreferences()
         }
     }
@@ -461,6 +462,19 @@ final class AppState {
     var subtitleMaxLines: Int = 3 {
         didSet {
             guard !isLoadingPreferences else { return }
+            SubtitleOverlayManager.shared.updateSize()
+            savePreferences()
+        }
+    }
+
+    /// Maximum width of the subtitle window in points (400-1600).
+    /// The window is still capped at 92% of the screen width.
+    var subtitleWindowWidth: Double = 1600 {
+        didSet {
+            guard !isLoadingPreferences else { return }
+            if subtitleWindowWidth != oldValue {
+                SubtitleOverlayManager.shared.updateSize()
+            }
             savePreferences()
         }
     }
@@ -525,6 +539,7 @@ final class AppState {
                 return
             }
             SubtitleTranslationService.shared.invalidate(appState: self)
+            SubtitleOverlayManager.shared.updateSize()
             savePreferences()
         }
     }
@@ -533,6 +548,7 @@ final class AppState {
     var subtitleShowOriginal: Bool = false {
         didSet {
             guard !isLoadingPreferences else { return }
+            SubtitleOverlayManager.shared.updateSize()
             savePreferences()
         }
     }
@@ -2013,6 +2029,9 @@ final class AppState {
         if UserDefaults.standard.object(forKey: "subtitleMaxLines") != nil {
             subtitleMaxLines = UserDefaults.standard.integer(forKey: "subtitleMaxLines")
         }
+        if UserDefaults.standard.object(forKey: "subtitleWindowWidth") != nil {
+            subtitleWindowWidth = UserDefaults.standard.double(forKey: "subtitleWindowWidth")
+        }
         if UserDefaults.standard.object(forKey: "subtitleHidePanelWhenActive") != nil {
             subtitleHidePanelWhenActive = UserDefaults.standard.bool(forKey: "subtitleHidePanelWhenActive")
         }
@@ -2183,6 +2202,7 @@ final class AppState {
         UserDefaults.standard.set(subtitleOpacity, forKey: "subtitleOpacity")
         UserDefaults.standard.set(subtitleBackgroundOpacity, forKey: "subtitleBackgroundOpacity")
         UserDefaults.standard.set(subtitleMaxLines, forKey: "subtitleMaxLines")
+        UserDefaults.standard.set(subtitleWindowWidth, forKey: "subtitleWindowWidth")
         UserDefaults.standard.set(subtitleHidePanelWhenActive, forKey: "subtitleHidePanelWhenActive")
         UserDefaults.standard.set(subtitleUseCustomPosition, forKey: "subtitleUseCustomPosition")
         UserDefaults.standard.set(subtitleCustomX, forKey: "subtitleCustomX")

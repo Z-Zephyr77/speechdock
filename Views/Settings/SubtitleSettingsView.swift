@@ -39,7 +39,7 @@ struct SubtitleSettingsView: View {
                     HStack(spacing: 8) {
                         Slider(
                             value: $appState.subtitleFontSize,
-                            in: 18...48,
+                            in: 12...48,
                             step: 2
                         ) {
                             EmptyView()
@@ -93,8 +93,32 @@ struct SubtitleSettingsView: View {
                     )
                 }
 
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("Window Width")
+                        Spacer()
+                        Text("\(Int(appState.subtitleWindowWidth)) pt")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    }
+
+                    HStack(spacing: 8) {
+                        Slider(
+                            value: $appState.subtitleWindowWidth,
+                            in: 400...1600,
+                            step: 20
+                        )
+
+                        Button("Reset") {
+                            appState.subtitleWindowWidth = 1600
+                        }
+                        .buttonStyle(.borderless)
+                        .font(.caption)
+                    }
+                }
+
                 Picker("Max Lines", selection: $appState.subtitleMaxLines) {
-                    ForEach(2...8, id: \.self) { lines in
+                    ForEach(1...8, id: \.self) { lines in
                         Text("\(lines) lines").tag(lines)
                     }
                 }
@@ -121,6 +145,7 @@ struct SubtitleSettingsView: View {
                         appState.subtitleOpacity = 0.85
                         appState.subtitleBackgroundOpacity = 0.5
                         appState.subtitleMaxLines = 3
+                        appState.subtitleWindowWidth = 1600
                         appState.subtitleHidePanelWhenActive = true
                     }
                     .font(.caption)

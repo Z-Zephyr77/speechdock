@@ -65,7 +65,7 @@ struct SubtitleOverlayView: View {
         let lineCount = text.components(separatedBy: .newlines)
             .map { line in
                 let charWidth: CGFloat = effectiveFontSize * 0.55
-                let availableWidth: CGFloat = max(NSScreen.main?.frame.width ?? 800, 400) - 88
+                let availableWidth: CGFloat = max(min((NSScreen.main?.frame.width ?? 800) * 0.92, CGFloat(appState.subtitleWindowWidth)), 300) - 88
                 return max(1, Int(ceil(CGFloat(line.count) * charWidth / availableWidth)))
             }
             .reduce(0, +)
@@ -339,7 +339,7 @@ struct SubtitleOverlayView: View {
 
                 HStack(spacing: 3) {
                     Button {
-                        if appState.subtitleFontSize > 18 {
+                        if appState.subtitleFontSize > 12 {
                             appState.subtitleFontSize -= 2
                         }
                     } label: {
@@ -375,7 +375,7 @@ struct SubtitleOverlayView: View {
 
                 HStack(spacing: 3) {
                     Button {
-                        if appState.subtitleMaxLines > 2 {
+                        if appState.subtitleMaxLines > 1 {
                             appState.subtitleMaxLines -= 1
                         }
                     } label: {

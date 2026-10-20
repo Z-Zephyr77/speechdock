@@ -16,6 +16,10 @@ final class SubtitleOverlayManager {
     /// Flag to prevent updatePosition() calls during drag
     private(set) var isDragging = false
 
+    /// Origin set by updateSize(); lets windowDidMove() tell a programmatic
+    /// resize apart from the user dragging the window
+    private var programmaticOrigin: NSPoint?
+
     /// Window level for subtitle overlay (above most windows but below system UI)
     private static let subtitleWindowLevel = NSWindow.Level(rawValue: Int(NSWindow.Level.floating.rawValue) + 1)
 
@@ -51,11 +55,9 @@ final class SubtitleOverlayManager {
 
         // Calculate window frame
         let screenFrame = targetScreen.visibleFrame  // Use visibleFrame to account for menu bar and dock
-        let windowWidth = min(screenFrame.width * 0.92, 1600)  // Cap max width
-        // Calculate height based on max lines + header + padding
-        let lineHeight = appState.subtitleFontSize * 1.4
-        let textAreaHeight = lineHeight * CGFloat(appState.subtitleMaxLines)
-        let windowHeight = textAreaHeight + 84  // header (24) + padding
+        let windowSize = Self.windowSize(for: appState, in: screenFrame)
+        let windowWidth = windowSize.width
+        let windowHeight = windowSize.height
         var windowFrame: NSRect
 
         if appState.subtitleUseCustomPosition {
@@ -158,6 +160,41 @@ final class SubtitleOverlayManager {
         show(appState: appState)
     }
 
+    /// Window size derived from the current subtitle settings.
+    /// Height = max lines of text + header + padding, plus room for the
+    /// original-text block when it is shown next to the translation.
+    private static func windowSize(for appState: AppState, in screenFrame: NSRect) -> NSSize {
+        let width = min(screenFrame.width * 0.92, CGFloat(appState.subtitleWindowWidth))
+        let lineHeight = appState.subtitleFontSize * 1.4
+        var textAreaHeight = lineHeight * CGFloat(appState.subtitleMaxLines)
+        if appState.subtitleShowOriginal && appState.subtitleTranslationEnabled {
+            // Original text uses 0.7x font size and up to 2 lines, plus 8pt spacing
+            textAreaHeight += appState.subtitleFontSize * 0.7 * 1.4 * 2 + 8
+        }
+        return NSSize(width: width, height: textAreaHeight + 84)  // header (24) + padding
+    }
+
+    /// Resize the visible overlay in place after a settings change
+    /// (font size, max lines, width, show-original). Keeps the window's anchor edge fixed.
+    func updateSize() {
+        guard let appState = appState, let window = overlayWindow, !isHiding else { return }
+        guard let screenFrame = (window.screen ?? NSScreen.main)?.visibleFrame else { return }
+
+        let size = Self.windowSize(for: appState, in: screenFrame)
+        var frame = window.frame
+        let anchorBottom = !appState.subtitleUseCustomPosition && appState.subtitlePosition == .bottom
+        let oldTop = frame.maxY
+        frame.size = size
+        frame.origin.y = anchorBottom ? frame.origin.y : oldTop - size.height
+        // Keep inside the visible screen area
+        frame.origin.x = max(screenFrame.minX, min(frame.origin.x, screenFrame.maxX - size.width))
+        frame.origin.y = max(screenFrame.minY, min(frame.origin.y, screenFrame.maxY - size.height))
+
+        // A programmatic resize must not be mistaken for the user dragging the window
+        programmaticOrigin = (frame.origin == window.frame.origin) ? nil : frame.origin
+        window.setFrame(frame, display: true, animate: false)
+    }
+
     /// Check if overlay is currently visible
     var isVisible: Bool {
         overlayWindow?.isVisible ?? false
@@ -194,7 +231,15 @@ final class SubtitleOverlayManager {
     }
 
     private func windowDidMove() {
-        guard overlayWindow != nil, appState != nil else { return }
+        guard let window = overlayWindow, appState != nil else { return }
+
+        // Ignore the move notification caused by updateSize()
+        if let expected = programmaticOrigin {
+            programmaticOrigin = nil
+            if abs(window.frame.origin.x - expected.x) < 1, abs(window.frame.origin.y - expected.y) < 1 {
+                return
+            }
+        }
 
         // Mark as dragging to prevent updatePosition() calls
         isDragging = true
